@@ -14,51 +14,38 @@ const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
 class CustomCrop extends Component {
     constructor(props) {
         super(props);
+
         this.state = {
-            viewHeight:
-                Dimensions.get('window').width * (props.height / props.width),
-            height: props.height,
-            width: props.width,
+            viewHeight: Dimensions.get('window').height,
+            initialImageHeight: props.height,
+            initialImageWidth: props.width,
+            height: props.rectangleCoordinates.dimensions.height,
+            width: props.rectangleCoordinates.dimensions.width,
             image: props.initialImage,
-            moving: false,
+            moving: false
         };
 
         this.state = {
             ...this.state,
             topLeft: new Animated.ValueXY(
                 props.rectangleCoordinates
-                    ? this.imageCoordinatesToViewCoordinates(
-                          props.rectangleCoordinates.topLeft,
-                          true,
-                      )
+                    ? this.imageCoordinatesToViewCoordinates(props.rectangleCoordinates.topLeft)
                     : { x: 100, y: 100 },
             ),
             topRight: new Animated.ValueXY(
                 props.rectangleCoordinates
-                    ? this.imageCoordinatesToViewCoordinates(
-                          props.rectangleCoordinates.topRight,
-                          true,
-                      )
+                    ? this.imageCoordinatesToViewCoordinates(props.rectangleCoordinates.bottomLeft)
                     : { x: Dimensions.get('window').width - 100, y: 100 },
             ),
             bottomLeft: new Animated.ValueXY(
                 props.rectangleCoordinates
-                    ? this.imageCoordinatesToViewCoordinates(
-                          props.rectangleCoordinates.bottomLeft,
-                          true,
-                      )
+                    ? this.imageCoordinatesToViewCoordinates(props.rectangleCoordinates.topRight)
                     : { x: 100, y: this.state.viewHeight - 100 },
             ),
             bottomRight: new Animated.ValueXY(
                 props.rectangleCoordinates
-                    ? this.imageCoordinatesToViewCoordinates(
-                          props.rectangleCoordinates.bottomRight,
-                          true,
-                      )
-                    : {
-                          x: Dimensions.get('window').width - 100,
-                          y: this.state.viewHeight - 100,
-                      },
+                    ? this.imageCoordinatesToViewCoordinates(props.rectangleCoordinates.bottomRight)
+                    : { x: Dimensions.get('window').width - 100, y: this.state.viewHeight - 100 },
             ),
         };
         this.state = {
@@ -93,7 +80,7 @@ class CustomCrop extends Component {
                     dx: corner.x,
                     dy: corner.y,
                 },
-            ]),
+            ], {useNativeDriver: false}),
             onPanResponderRelease: () => {
                 corner.flattenOffset();
                 this.updateOverlayString();
@@ -105,21 +92,60 @@ class CustomCrop extends Component {
         });
     }
 
-    crop() {
+    /*
+    RCT_EXPORT_METHOD(crop:(NSDictionary *)points imageUri:(NSString *)imageUri callback:(RCTResponseSenderBlock)callback)
+    {
+        CFDataRef dataRef = (__bridge CFDataRef)[NSData dataWithContentsOfFile:imageUri];
+        CGDataProviderRef imgDataProvider = CGDataProviderCreateWithCFData(dataRef);
+        CGImageRef intialImageRef = CGImageCreateWithJPEGDataProvider(imgDataProvider, NULL, true, kCGRenderingIntentDefault);
+        CIImage *intialImage = [CIImage imageWithCGImage:intialImageRef];
+        intialImage = [intialImage imageByApplyingOrientation:kCGImagePropertyOrientationRight];
+        
+        NSMutableDictionary *rectangleCoordinates = [NSMutableDictionary new];
+        
+        CGPoint topLeft = CGPointMake([points[@"topLeft"][@"x"] floatValue], [points[@"topLeft"][@"y"] floatValue]);
+        CGPoint topRight = CGPointMake([points[@"topRight"][@"x"] floatValue], [points[@"topRight"][@"y"] floatValue]);
+        CGPoint bottomLeft = CGPointMake([points[@"bottomLeft"][@"x"] floatValue], [points[@"bottomLeft"][@"y"] floatValue]);
+        CGPoint bottomRight = CGPointMake([points[@"bottomRight"][@"x"] floatValue], [points[@"bottomRight"][@"y"] floatValue]);
+        
+        CGFloat height = intialImage.extent.size.height;
+        topLeft = [self cartesianForPoint:topLeft height:height];
+        topRight = [self cartesianForPoint:topRight height:height];
+        bottomLeft = [self cartesianForPoint:bottomLeft height:height];
+        bottomRight = [self cartesianForPoint:bottomRight height:height];
+
+        rectangleCoordinates[@"inputTopLeft"] = [CIVector vectorWithCGPoint:topLeft];
+        rectangleCoordinates[@"inputTopRight"] = [CIVector vectorWithCGPoint:topRight];
+        rectangleCoordinates[@"inputBottomLeft"] = [CIVector vectorWithCGPoint:bottomLeft];
+        rectangleCoordinates[@"inputBottomRight"] = [CIVector vectorWithCGPoint:bottomRight];
+
+        CIImage * croppedImage = [intialImage imageByApplyingFilter:@"CIPerspectiveCorrection" withInputParameters:rectangleCoordinates];
+        
+        CIContext *context = [CIContext contextWithOptions:nil];
+        CGImageRef croppedref = [context createCGImage:croppedImage fromRect:[croppedImage extent]];
+        UIImage *image = [UIImage imageWithCGImage:croppedref];
+        
+        NSData *imageToEncode = UIImageJPEGRepresentation(image, 0.8);
+        callback(@[[NSNull null], @{@"image": [imageToEncode base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength]}]);
+        
+        CGImageRelease(croppedref);
+    }
+    */
+
+   crop() {
+
+        let _topLeft = this.viewCoordinatesToImageCoordinates(this.state.topLeft)
+        let _topRight = this.viewCoordinatesToImageCoordinates(this.state.topRight);
+        let _bottomLeft = this.viewCoordinatesToImageCoordinates(this.state.bottomLeft);
+        let _bottomRight = this.viewCoordinatesToImageCoordinates(this.state.bottomRight);
+
         const coordinates = {
-            topLeft: this.viewCoordinatesToImageCoordinates(this.state.topLeft),
-            topRight: this.viewCoordinatesToImageCoordinates(
-                this.state.topRight,
-            ),
-            bottomLeft: this.viewCoordinatesToImageCoordinates(
-                this.state.bottomLeft,
-            ),
-            bottomRight: this.viewCoordinatesToImageCoordinates(
-                this.state.bottomRight,
-            ),
-            height: this.state.height,
-            width: this.state.width,
+            topLeft: _topLeft,
+            topRight: _topRight,
+            bottomLeft: _bottomLeft,
+            bottomRight: _bottomRight,
         };
+
         NativeModules.CustomCropManager.crop(
             coordinates,
             this.state.image,
@@ -139,19 +165,17 @@ class CustomCrop extends Component {
         });
     }
 
+    viewCoordinatesToImageCoordinates(corner) {
+        return {
+            x: (corner.x._value / Dimensions.get('window').width) * this.state.initialImageWidth,
+            y: (corner.y._value / this.state.viewHeight) * this.state.initialImageHeight
+        };
+    }
+
     imageCoordinatesToViewCoordinates(corner) {
         return {
             x: (corner.x * Dimensions.get('window').width) / this.state.width,
             y: (corner.y * this.state.viewHeight) / this.state.height,
-        };
-    }
-
-    viewCoordinatesToImageCoordinates(corner) {
-        return {
-            x:
-                (corner.x._value / Dimensions.get('window').width) *
-                this.state.width,
-            y: (corner.y._value / this.state.viewHeight) * this.state.height,
         };
     }
 

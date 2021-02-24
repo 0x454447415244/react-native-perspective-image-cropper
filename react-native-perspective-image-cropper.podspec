@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.name          = package["name"]
   s.version       = package["version"]
   s.summary       = package["description"]
-  s.homepage      = "https://github.com/Michaelvilleneuve/react-native-perspective-image-cropper"
+  s.homepage      = "https://github.com/0x454447415244/react-native-perspective-image-cropper"
   s.license       = package["license"]
   s.authors       = package["author"]
   s.platform      = :ios, "9.0"

@@ -7,37 +7,41 @@ RCT_EXPORT_MODULE();
 
 RCT_EXPORT_METHOD(crop:(NSDictionary *)points imageUri:(NSString *)imageUri callback:(RCTResponseSenderBlock)callback)
 {
-    NSString *parsedImageUri = [imageUri stringByReplacingOccurrencesOfString:@"file://" withString:@""];
-    NSURL *fileURL = [NSURL fileURLWithPath:parsedImageUri];
-    CIImage *ciImage = [CIImage imageWithContentsOfURL:fileURL];
+    CFDataRef dataRef = (__bridge CFDataRef)[NSData dataWithContentsOfFile:imageUri];
+    CGDataProviderRef imgDataProvider = CGDataProviderCreateWithCFData(dataRef);
+    CGImageRef intialImageRef = CGImageCreateWithJPEGDataProvider(imgDataProvider, NULL, true, kCGRenderingIntentDefault);
+    CIImage *intialImage = [CIImage imageWithCGImage:intialImageRef];
+    intialImage = [intialImage imageByApplyingOrientation:kCGImagePropertyOrientationRight];
     
-    CGPoint newLeft = CGPointMake([points[@"topLeft"][@"x"] floatValue], [points[@"topLeft"][@"y"] floatValue]);
-    CGPoint newRight = CGPointMake([points[@"topRight"][@"x"] floatValue], [points[@"topRight"][@"y"] floatValue]);
-    CGPoint newBottomLeft = CGPointMake([points[@"bottomLeft"][@"x"] floatValue], [points[@"bottomLeft"][@"y"] floatValue]);
-    CGPoint newBottomRight = CGPointMake([points[@"bottomRight"][@"x"] floatValue], [points[@"bottomRight"][@"y"] floatValue]);
+    NSMutableDictionary *rectangleCoordinates = [NSMutableDictionary new];
     
-    newLeft = [self cartesianForPoint:newLeft height:[points[@"height"] floatValue] ];
-    newRight = [self cartesianForPoint:newRight height:[points[@"height"] floatValue] ];
-    newBottomLeft = [self cartesianForPoint:newBottomLeft height:[points[@"height"] floatValue] ];
-    newBottomRight = [self cartesianForPoint:newBottomRight height:[points[@"height"] floatValue] ];
+    CGPoint topLeft = CGPointMake([points[@"topLeft"][@"x"] floatValue], [points[@"topLeft"][@"y"] floatValue]);
+    CGPoint topRight = CGPointMake([points[@"topRight"][@"x"] floatValue], [points[@"topRight"][@"y"] floatValue]);
+    CGPoint bottomLeft = CGPointMake([points[@"bottomLeft"][@"x"] floatValue], [points[@"bottomLeft"][@"y"] floatValue]);
+    CGPoint bottomRight = CGPointMake([points[@"bottomRight"][@"x"] floatValue], [points[@"bottomRight"][@"y"] floatValue]);
     
-    
-    
-    NSMutableDictionary *rectangleCoordinates = [[NSMutableDictionary alloc] init];
-    
-    rectangleCoordinates[@"inputTopLeft"] = [CIVector vectorWithCGPoint:newLeft];
-    rectangleCoordinates[@"inputTopRight"] = [CIVector vectorWithCGPoint:newRight];
-    rectangleCoordinates[@"inputBottomLeft"] = [CIVector vectorWithCGPoint:newBottomLeft];
-    rectangleCoordinates[@"inputBottomRight"] = [CIVector vectorWithCGPoint:newBottomRight];
-    
-    ciImage = [ciImage imageByApplyingFilter:@"CIPerspectiveCorrection" withInputParameters:rectangleCoordinates];
+    CGFloat height = intialImage.extent.size.height;
+    topLeft = [self cartesianForPoint:topLeft height:height];
+    topRight = [self cartesianForPoint:topRight height:height];
+    bottomLeft = [self cartesianForPoint:bottomLeft height:height];
+    bottomRight = [self cartesianForPoint:bottomRight height:height];
+
+    rectangleCoordinates[@"inputTopLeft"] = [CIVector vectorWithCGPoint:topLeft];
+    rectangleCoordinates[@"inputTopRight"] = [CIVector vectorWithCGPoint:topRight];
+    rectangleCoordinates[@"inputBottomLeft"] = [CIVector vectorWithCGPoint:bottomLeft];
+    rectangleCoordinates[@"inputBottomRight"] = [CIVector vectorWithCGPoint:bottomRight];
+
+    CIImage * croppedImage = [intialImage imageByApplyingFilter:@"CIPerspectiveCorrection" withInputParameters:rectangleCoordinates];
     
     CIContext *context = [CIContext contextWithOptions:nil];
-    CGImageRef cgimage = [context createCGImage:ciImage fromRect:[ciImage extent]];
-    UIImage *image = [UIImage imageWithCGImage:cgimage];
+    CGImageRef croppedref = [context createCGImage:croppedImage fromRect:[croppedImage extent]];
+    UIImage *image = [UIImage imageWithCGImage:croppedref];
     
     NSData *imageToEncode = UIImageJPEGRepresentation(image, 0.8);
     callback(@[[NSNull null], @{@"image": [imageToEncode base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength]}]);
+    
+    CGImageRelease(croppedref);
+    CGImageRelease(intialImageRef);
 }
 
 - (CGPoint)cartesianForPoint:(CGPoint)point height:(float)height {
