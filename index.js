@@ -16,7 +16,7 @@ class CustomCrop extends Component {
         super(props);
 
         this.state = {
-            viewHeight: Dimensions.get('window').height - props.padding,
+            viewHeight: Dimensions.get('window').height,
             initialImageHeight: props.height,
             initialImageWidth: props.width,
             height: props.rectangleCoordinates.dimensions.height,
@@ -151,7 +151,7 @@ class CustomCrop extends Component {
                 <View
                     style={[
                         s(this.props).cropContainer,
-                        { height: this.state.viewHeight },
+                        { height: this.state.viewHeight - this.props.padding },
                     ]}
                 >
                     <Image
